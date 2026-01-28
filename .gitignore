@@ -1,0 +1,16 @@
+# Node modules (Frontend junk)
+node_modules/
+dist/
+.env
+
+# Python (Backend junk)
+backend/venv/
+backend/backend/venv/
+backend/__pycache__/
+backend/backend/__pycache__/
+*.pyc
+*.db
+*.pkl
+
+# VS Code settings
+.vscode/

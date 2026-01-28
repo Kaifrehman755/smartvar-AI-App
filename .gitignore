@@ -10,7 +10,6 @@ backend/__pycache__/
 backend/backend/__pycache__/
 *.pyc
 *.db
-*.pkl
 
 # VS Code settings
 .vscode/

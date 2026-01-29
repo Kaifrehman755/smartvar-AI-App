@@ -1,42 +1,32 @@
 import pandas as pd
-import numpy as np
-from sklearn.ensemble import RandomForestRegressor
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import r2_score, mean_absolute_error
+from sklearn.ensemble import RandomForestRegressor
 import joblib
 
-print("--- 🧠 Advanced AI Training Started ---")
-
-# 1. Load Real Data
+# 1. Data Load Karo
 try:
-    df = pd.read_csv('market_data.csv')
-    print(f"📂 Data Loaded: {len(df)} rows")
-except FileNotFoundError:
-    print("❌ Error: 'market_data.csv' nahi mili. Pehle 'generate_data.py' run karo!")
+    df = pd.read_csv("market_data.csv")
+    print("✅ Data Loaded Successfully!")
+except:
+    print("❌ Error: Pehle 'python generate_data.py' chalao!")
     exit()
 
-# 2. Features (X) aur Target (y) alag karo
+# 2. Features aur Target alag karo
 X = df[['original_price', 'age', 'condition', 'brand_tier']]
 y = df['resale_price']
 
-# 3. Train-Test Split (Professional Practice)
-# Hum 80% data training ke liye rakhenge aur 20% test ke liye (Exam lene ke liye)
+# 3. Train-Test Split
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# 4. Train the Model (Thoda heavy settings ke saath)
-print("⏳ Training model on 4000 rows...")
-model = RandomForestRegressor(n_estimators=200, max_depth=15, random_state=42)
+# 4. Model Training (Random Forest)
+# n_estimators=100 matlab 100 decision trees mil kar faisla lenge (Zyada accurate)
+model = RandomForestRegressor(n_estimators=200, random_state=42)
 model.fit(X_train, y_train)
 
-# 5. Model ka Exam lo (Accuracy Check)
-predictions = model.predict(X_test)
-accuracy = r2_score(y_test, predictions) * 100
-error_margin = mean_absolute_error(y_test, predictions)
+# 5. Accuracy Test
+score = model.score(X_test, y_test)
+print(f"🎯 Model Accuracy: {round(score * 100, 2)}%")
 
-print(f"\n✅ Training Complete!")
-print(f"🎯 Model Accuracy Score: {accuracy:.2f}% (Jitna 100 ke paas, utna behtar)")
-print(f"💰 Average Error Margin: ₹{int(error_margin)} (AI price mein itna upar-neeche ho sakta hai)")
-
-# 6. Save the smarter brain
+# 6. Model Save Karo
 joblib.dump(model, "price_model.pkl")
-print("💾 New 'price_model.pkl' saved.")
+print("💾 Model saved as 'price_model.pkl'")

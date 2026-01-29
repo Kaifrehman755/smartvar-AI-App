@@ -1,78 +1,73 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI
 from pydantic import BaseModel
-from sqlmodel import SQLModel, Field, create_engine, Session
 import joblib
 import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# --- 1. Database Setup (SQLite) ---
-# Ye table banayega jo user ki requests ko save karega
-class ValuationLog(SQLModel, table=True):
-    id: int | None = Field(default=None, primary_key=True)
-    original_price: float
-    age: int
-    condition: int
-    brand_tier: int
-    predicted_price: float
-
-# Database file 'database.db' yahi banegi
-engine = create_engine("sqlite:///database.db")
-SQLModel.metadata.create_all(engine)
-
-# --- 2. Load AI Model ---
-# Check karte hain ki model file hai ya nahi
-if not os.path.exists("price_model.pkl"):
-    raise RuntimeError("Model file not found! Pehle 'python model_training.py' run karo.")
-
-model = joblib.load("price_model.pkl")
-
-# --- 3. App Setup ---
+# --- 1. App Initialize ---
 app = FastAPI()
 
-# Frontend (React) ko allow karne ke liye settings
+# --- 2. CORS Settings (Frontend connection ke liye) ---
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Production mein isse frontend URL se badal dena
+    allow_origins=["*"],  # Sabhi ko allow karo
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Input Data Format (Jo React bhejea)
-class ItemInput(BaseModel):
+# --- 3. Model Load ---
+# Model file load karte hain
+try:
+    if os.path.exists("price_model.pkl"):
+        model = joblib.load("price_model.pkl")
+        print("✅ Model loaded successfully!")
+    else:
+        print("❌ Error: price_model.pkl nahi mili")
+        model = None
+except Exception as e:
+    print(f"❌ Model Loading Error: {e}")
+    model = None
+
+# --- 4. Input Data Format ---
+class ValuationRequest(BaseModel):
     original_price: float
     age: int
-    condition: int  # 1-5 Scale
-    brand_tier: int # 1-3 Scale
+    condition: int
+    brand_tier: int
+
+# --- 5. Routes ---
 
 @app.get("/")
 def read_root():
-    return {"message": "SmartVar AI Server is Running!"}
+    return {"message": "SmartVal AI Server is Running!"}
 
 @app.post("/predict")
-def predict_price(item: ItemInput):
-    # 1. AI ke liye data prepare karo
-    input_data = pd.DataFrame([[
-        item.original_price, 
-        item.age, 
-        item.condition, 
-        item.brand_tier
-    ]], columns=['original_price', 'age', 'condition', 'brand_tier'])
+def predict_value(data: ValuationRequest):
+    if model is None:
+        return {"error": "Model not loaded. Server check karo."}
+
+    # 1. Data ko DataFrame mein badlo
+    input_data = {
+        "original_price": [data.original_price],
+        "age": [data.age],
+        "condition": [data.condition],
+        "brand_tier": [data.brand_tier]
+    }
+    input_df = pd.DataFrame(input_data)
+
+    # 2. Prediction (AI Model se)
+    prediction = model.predict(input_df)[0]
     
-    # 2. Prediction lo
-    prediction = model.predict(input_data)[0]
+    # --- 🔒 LOGIC LOCK (Correction Logic) ---
+    # Agar AI ne galti se value Original se zyada bata di:
+    if prediction >= data.original_price:
+        prediction = data.original_price * 0.85  # Max 85% limit
     
-    # 3. Database mein save karo (Memory)
-    with Session(engine) as session:
-        log = ValuationLog(
-            original_price=item.original_price, 
-            age=item.age, 
-            condition=item.condition,
-            brand_tier=item.brand_tier,
-            predicted_price=prediction
-        )
-        session.add(log)
-        session.commit()
-    
-    # 4. Result return karo
-    return {"estimated_price": round(prediction, 2)}
+    # Agar prediction negative (-) chali jaye:
+    if prediction < 0:
+        prediction = data.original_price * 0.10  # Min 10% limit
+    # ----------------------------------------
+
+    return {"predicted_price": round(prediction, 2)}

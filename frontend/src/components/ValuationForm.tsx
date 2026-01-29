@@ -87,7 +87,7 @@ export function ValuationForm({ onSubmit }: ValuationFormProps) {
       };
 
       // API Call (Python Server se baat karo)
-      const response = await fetch("https://smartvar-ai-backend.onrender.com/predict---", {
+      const response = await fetch("https://smartvar-ai-backend.onrender.com/predict", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

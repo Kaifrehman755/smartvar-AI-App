@@ -5,7 +5,7 @@ import pandas as pd
 from fastapi.middleware.cors import CORSMiddleware
 import os
 
-# --- 1. App Initialize ---
+# --- 1. App Initialize --- 
 app = FastAPI()
 
 # --- 2. CORS Settings (Frontend connection ke liye) ---
@@ -39,16 +39,11 @@ class ValuationRequest(BaseModel):
 
 # --- 5. Routes ---
 
-@app.get("/")
-def read_root():
-    return {"message": "SmartVal AI Server is Running!"}
-
 @app.post("/predict")
 def predict_value(data: ValuationRequest):
     if model is None:
-        return {"error": "Model not loaded. Server check karo."}
+        return {"error": "Model not loaded"}
 
-    # 1. Data ko DataFrame mein badlo
     input_data = {
         "original_price": [data.original_price],
         "age": [data.age],
@@ -57,17 +52,15 @@ def predict_value(data: ValuationRequest):
     }
     input_df = pd.DataFrame(input_data)
 
-    # 2. Prediction (AI Model se)
     prediction = model.predict(input_df)[0]
     
-    # --- 🔒 LOGIC LOCK (Correction Logic) ---
-    # Agar AI ne galti se value Original se zyada bata di:
+    # --- Logic Lock ---
     if prediction >= data.original_price:
-        prediction = data.original_price * 0.85  # Max 85% limit
+        prediction = data.original_price * 0.85
     
-    # Agar prediction negative (-) chali jaye:
     if prediction < 0:
-        prediction = data.original_price * 0.10  # Min 10% limit
-    # ----------------------------------------
+        prediction = data.original_price * 0.10
+    # ------------------
 
-    return {"predicted_price": round(prediction, 2)}
+    # 👇 YAHAN CHANGE KIYA HAI (predicted_price -> estimated_price)
+    return {"estimated_price": round(prediction, 2)}
